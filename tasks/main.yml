@@ -1,0 +1,51 @@
+---
+# tasks file for roles/ansible-role-sshconfig
+
+- name: Create containers
+      docker_container:
+        name: "mycont-{{ item }}"
+        recreate: yes
+        state: started
+        image: cubuntu-17.04
+        command: ["/usr/sbin/sshd", "-D"]
+      with_sequence: count=2
+      register: containers
+      connection: local
+
+- debug:
+        var: containers.results[1].ansible_facts.docker_container.NetworkSettings.IPAddress
+
+#- debug: msg="Container - {{ inventory_hostname }}"
+
+- command: hostname
+
+- user:
+        name: docker_root
+        generate_ssh_key: true
+      become: true
+
+- name: Set authorized key took from file
+      authorized_key:
+        user: docker_root
+        state: present
+        key: "{{ item }}"
+      with_file:
+- "{{ ssh_key_file }}"
+
+- name: get ssh key
+      shell: sudo -H -u docker_root bash -c 'cat ~/.ssh/id_rsa.pub'
+      register: pubkey
+
+- debug:
+        var: pubkey
+
+- name: add docker_root key to authorized key took from file
+      authorized_key:
+        user: docker_root
+        state: present
+        key: "{{ pubkey.stdout }}"
+
+  post_tasks:
+- name: Test connectivity
+      command: sudo -H -u docker_root bash -c 'ssh -i ~/.ssh/id_rsa docker_root@"{{ containers.results[1].ansible_facts.docker_container.NetworkSettings.IPAddress }}"'
+      register: result
