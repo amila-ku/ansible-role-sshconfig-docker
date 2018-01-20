@@ -1,7 +1,7 @@
-Role Name
+ansible-role-sshconfig-docker
 =========
 
-A brief description of the role goes here.
+Creates two docker containers and configures a user with automatically generated ssh keys.
 
 Requirements
 ------------
